@@ -1,0 +1,62 @@
+- hosts: localhost
+  connection: local
+  gather_facts: False
+  vars:
+     AAK: YOUR_AMAZON_KEY_HERE
+     ASK: YOUR_AMAZON_SECRET_HERE
+
+  tasks:
+
+    - name: Provision jumpbox
+      ec2:
+         region: us-east-1
+         group: default
+         keypair: justin
+         aws_access_key: "{{ AAK }}"
+         aws_secret_key: "{{ ASK }}"
+         instance_type: t2.nano
+         image: ami-f5f41398
+         wait: true
+         count: 1
+      register: jb
+
+    - name: Add instances to host group
+      shell: echo {{ item.public_ip }} >> /root/jumpbox_inventory
+      with_items: jb.instances
+
+    - name: get jumpbox ip
+      shell: cat /root/jumpbox_inventory
+      register: jb_ip
+
+
+    - name: create ec2 security group
+      ec2_group:
+        name: appservers
+        description: app servers can only be accessed from ip of jump box
+        region: us-east-1
+        aws_access_key: "{{ AAK }}"
+        aws_secret_key: "{{ ASK }}"
+        rules:
+          - proto: tcp
+            from_port: 22
+            to_port: 22
+            cidr_ip: "{{ jb_ip.stdout }}/32"
+
+
+
+    - name: Provision app server
+      ec2:
+         region: us-east-1
+         group: appservers
+         keypair: justin
+         aws_access_key: "{{ AAK }}"
+         aws_secret_key: "{{ ASK }}"
+         instance_type: t2.nano
+         image: ami-f5f41398
+         wait: true
+         count: 1
+      register: app
+    - name: Add instances to host group
+      shell: echo {{ item.public_ip }} >> /root/app_inventory
+      with_items: app.instances
+

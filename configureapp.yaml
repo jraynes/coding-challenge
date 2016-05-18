@@ -1,0 +1,37 @@
+- hosts: all
+
+  tasks:
+
+    - name: install epel
+      yum: name=epel-release state=latest
+
+    - name: install ntpd
+      yum: name=ntp state=latest
+
+    - name: start ntpd
+      service: name=ntpd state=started
+
+    - name: get stratum
+      shell:  /usr/sbin/ntpq -c rv | grep stratum | awk -F ',' '{print $1}'
+      register: stratum
+    - debug: msg="{{stratum.stdout_lines}}"
+
+    - name: install additional packages
+      yum: name={{ item }} state=latest
+      with_items:
+        - nmap
+        - openldap
+        - openldap-clients
+        - openldap-servers
+
+    - name: restart slapd (OpenLDAP Server Daemon)
+      service: name=slapd state=restarted
+
+    - name: create techops_dba group
+      shell: groupadd techops_dba
+
+    - name: add techops_dba to sudoers file
+      shell: echo "%techops_dba ALL=(ALL:ALL) ALL" >> /etc/sudoers
+
+    - name: add techops_dba to access file
+      shell: "echo + : @techops_dba : ALL >> /etc/security/access.conf"

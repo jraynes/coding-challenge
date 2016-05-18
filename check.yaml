@@ -1,0 +1,21 @@
+- hosts: all
+
+  tasks:
+
+    - name: check network status
+      shell: nmap -p 389 localhost
+      register: nmap
+
+    - debug: var=nmap
+
+    - name: check load avg
+      shell: uptime
+      register: uptime
+
+    - debug: var=uptime
+
+    - name: check slapd status
+      shell: service slapd status
+      register: slapd
+
+    - debug: var=slapd
